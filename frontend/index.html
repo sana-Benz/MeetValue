@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetValue - Meeting Cost Calculator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Persistent wordmark, always visible, click to return to the landing section -->
+    <button type="button" id="logoBtn" class="logo-btn" aria-label="Back to MeetValue home">
+        <span class="logo-meet">Meet</span><span class="logo-value">Value</span>
+    </button>
+
+    <div class="container">
+        <!-- Landing Section -->
+        <section id="landingSection" class="landing-section">
+            <h2 class="landing-headline">See the real cost of your meetings — and how to cut it</h2>
+            <p class="landing-tagline">Know the cost. Maximize the value.</p>
+            <p class="landing-subtext">
+                MeetValue turns your meeting details into a real dollar figure the moment you plan it, then asks AI to suggest specific, role-aware ways to bring that number down — not just "invite fewer people." Enter your attendees once and see exactly what the meeting is costing your company.
+            </p>
+            <button type="button" id="startCalculatingBtn" class="btn btn-primary btn-landing-cta">
+                Calculate Your Meeting Cost
+            </button>
+        </section>
+
+        <main>
+            <section class="form-section">
+                <form id="meetingForm" class="meeting-form">
+                    <!-- Meeting Subject -->
+                    <div class="form-group">
+                        <label for="subject">Meeting Subject *</label>
+                        <input
+                            type="text"
+                            id="subject"
+                            class="input-field"
+                            placeholder="e.g., Q4 Planning"
+                            maxlength="200"
+                            required
+                        />
+                        <span class="error-text error-subject" aria-live="polite"></span>
+                    </div>
+
+                    <!-- Meeting Duration -->
+                    <div class="form-group">
+                        <label for="duration">Duration (minutes) *</label>
+                        <div class="duration-input-group">
+                            <input
+                                type="number"
+                                id="duration"
+                                class="input-field"
+                                min="15"
+                                max="240"
+                                step="15"
+                                placeholder="15-240"
+                                value="60"
+                                required
+                            />
+                            <span class="duration-display">min</span>
+                        </div>
+                        <span class="error-text error-duration" aria-live="polite"></span>
+                    </div>
+
+                    <!-- Recurring Meeting Toggle -->
+                    <div class="form-group form-group-checkbox">
+                        <label class="checkbox-label" for="isRecurring">
+                            <input type="checkbox" id="isRecurring" />
+                            Is this a recurring meeting?
+                        </label>
+                    </div>
+
+                    <!-- Recurring Frequency (hidden until the toggle above is checked) -->
+                    <div class="form-group hidden" id="recurringFieldsGroup">
+                        <label for="recurringFrequency">Frequency</label>
+                        <div class="recurring-frequency-group">
+                            <input
+                                type="number"
+                                id="recurringFrequency"
+                                class="input-field"
+                                min="1"
+                                value="1"
+                            />
+                            <select id="recurringUnit" class="input-field">
+                                <option value="week">per week</option>
+                                <option value="month">per month</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Attendees Section -->
+                    <div class="form-group">
+                        <div class="attendees-header">
+                            <label for="attendeesList">Attendees *</label>
+                            <button type="button" id="addAttendeeBtn" class="btn btn-secondary">
+                                + Add Attendee
+                            </button>
+                        </div>
+
+                        <div id="attendeesList" class="attendees-list">
+                            <!-- Attendee rows will be added here dynamically -->
+                        </div>
+
+                        <span class="error-text error-attendees" aria-live="polite"></span>
+                    </div>
+
+                    <!-- Calculate Button -->
+                    <div class="form-actions">
+                        <button type="submit" id="calculateBtn" class="btn btn-primary">
+                            Calculate Cost
+                        </button>
+                        <button type="button" id="newMeetingBtn" class="btn btn-secondary">
+                            New Meeting
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Error Container -->
+                <div id="errorContainer" class="error-container" role="alert" aria-live="assertive">
+                    <div class="error-icon">⚠</div>
+                    <div class="error-content">
+                        <h3 id="errorTitle">Error</h3>
+                        <p id="errorMessage"></p>
+                    </div>
+                    <button type="button" class="error-close" aria-label="Close error message">×</button>
+                </div>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="loading-indicator" aria-hidden="true">
+                <div class="spinner"></div>
+                <p>Calculating...</p>
+            </div>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section hidden">
+                <!-- Cost Result -->
+                <div id="costResult" class="cost-result">
+                    <p class="cost-label">This meeting costs your company</p>
+                    <p class="cost-headline" id="totalCostDisplay">$0.00</p>
+
+                    <!-- Recurring Meeting Projection (hidden unless the recurring toggle is on) -->
+                    <div id="recurringResult" class="recurring-result hidden">
+                        <p class="recurring-result-label">If this meeting repeats:</p>
+                        <div class="recurring-result-grid">
+                            <div class="recurring-result-item">
+                                <span class="recurring-result-period">Monthly</span>
+                                <span class="recurring-result-value" id="recurringMonthlyValue">$0.00</span>
+                            </div>
+                            <div class="recurring-result-item recurring-result-annual">
+                                <span class="recurring-result-period">Annual</span>
+                                <span class="recurring-result-value" id="recurringAnnualValue">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Breakdown Table -->
+                <div id="breakdownContainer" class="breakdown-container">
+                    <h2>Cost Breakdown</h2>
+                    <table class="breakdown-table" id="breakdownTable">
+                        <thead>
+                            <tr>
+                                <th>Attendee</th>
+                                <th>Role</th>
+                                <th>Seniority</th>
+                                <th>Hourly Rate</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="breakdownTableBody">
+                            <!-- Breakdown rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Recommendations Section -->
+                <div id="recommendationsContainer" class="recommendations-container">
+                    <h2>Cost Reduction Recommendations</h2>
+                    <div id="totalSavingsBanner" class="total-savings-banner hidden">
+                        <span class="total-savings-icon" aria-hidden="true">💰</span>
+                        <div class="total-savings-text">
+                            <span class="total-savings-label">Best Savings Opportunity</span>
+                            <span class="total-savings-amount" id="totalSavingsAmount">$0.00</span>
+                        </div>
+                        <span class="total-savings-percent" id="totalSavingsPercent"></span>
+                    </div>
+                    <div id="recommendationsList" class="recommendations-list">
+                        <!-- Recommendations will be added here -->
+                    </div>
+                    <p id="recommendationsError" class="recommendations-fallback hidden">
+                        Recommendations unavailable. Here's your cost breakdown.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; <span id="year"></span> MeetValue - Making meetings more accountable</p>
+        </footer>
+    </div>
+
+    <!-- Template for attendee row (used by JavaScript) -->
+    <!-- Seniority option labels show the default $/hr rate; keep these in
+         sync with backend/shared/constants.py and DEFAULT_RATES in app.js -->
+    <template id="attendeeRowTemplate">
+        <div class="attendee-row">
+            <div class="attendee-fields">
+                <input
+                    type="text"
+                    class="attendee-name"
+                    placeholder="Name"
+                    maxlength="100"
+                    required
+                />
+                <input
+                    type="text"
+                    class="attendee-role"
+                    placeholder="Role (e.g., Backend Developer)"
+                    maxlength="100"
+                    required
+                />
+                <select class="attendee-seniority" required>
+                    <option value="">Select seniority...</option>
+                    <option value="junior">Junior ($50/hr)</option>
+                    <option value="mid-level">Mid-Level ($100/hr)</option>
+                    <option value="senior">Senior ($200/hr)</option>
+                    <option value="executive">Executive ($400/hr)</option>
+                </select>
+                <input
+                    type="number"
+                    class="attendee-rate"
+                    placeholder="Rate ($/hr)"
+                    min="0.01"
+                    step="0.01"
+                    required
+                />
+            </div>
+            <button type="button" class="btn btn-icon btn-remove-attendee" aria-label="Remove attendee">
+                ×
+            </button>
+        </div>
+    </template>
+
+    <!-- Template for recommendation item (used by JavaScript) -->
+    <template id="recommendationTemplate">
+        <div class="recommendation-item">
+            <div class="recommendation-header">
+                <h3 class="recommendation-category"></h3>
+                <span class="recommendation-savings"></span>
+            </div>
+            <p class="recommendation-text"></p>
+        </div>
+    </template>
+
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
