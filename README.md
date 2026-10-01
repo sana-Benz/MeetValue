@@ -4,7 +4,7 @@
 
 MeetValue shows the real dollar cost of a meeting while you plan it, based on who is attending, their seniority and the meeting length. It then asks **Claude Haiku 4.5 on Amazon Bedrock** for concrete ways to reduce that cost. The suggestions weigh each attendee's *role* against the meeting's *subject*, so they go beyond "invite fewer people".
 
-**Live app:** http://meetcost-frontend-022076688911.s3-website-us-east-1.amazonaws.com
+**Live app:** https://dtblrtag5aahw.cloudfront.net/
 
 Built for the **AWS Zero to Shipped** hackathon · Category **Workplace Efficiency** · Lane **Startups** · Built with **[Kiro](https://kiro.dev)** (spec-driven development and AWS deployment)
 
