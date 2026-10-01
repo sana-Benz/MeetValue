@@ -1,0 +1,77 @@
+[
+    {
+        "LogicalId": "CalculateCostFunction",
+        "Type": "AWS::Lambda::Function",
+        "Status": "UPDATE_COMPLETE"
+    },
+    {
+        "LogicalId": "CalculateCostFunctionCalculateCostApiPermissionprod",
+        "Type": "AWS::Lambda::Permission",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "CalculateCostFunctionRole",
+        "Type": "AWS::IAM::Role",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "FrontendBucket",
+        "Type": "AWS::S3::Bucket",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "FrontendBucketPolicy",
+        "Type": "AWS::S3::BucketPolicy",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "GetRecommendationsFunction",
+        "Type": "AWS::Lambda::Function",
+        "Status": "UPDATE_COMPLETE"
+    },
+    {
+        "LogicalId": "GetRecommendationsFunctionGetRecommendationsApiPermissionprod",
+        "Type": "AWS::Lambda::Permission",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "GetRecommendationsFunctionRole",
+        "Type": "AWS::IAM::Role",
+        "Status": "UPDATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApi",
+        "Type": "AWS::ApiGateway::RestApi",
+        "Status": "UPDATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApiApiKey",
+        "Type": "AWS::ApiGateway::ApiKey",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApiDeployment62ac1c45bb",
+        "Type": "AWS::ApiGateway::Deployment",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApiUsagePlan",
+        "Type": "AWS::ApiGateway::UsagePlan",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApiUsagePlanKey",
+        "Type": "AWS::ApiGateway::UsagePlanKey",
+        "Status": "CREATE_COMPLETE"
+    },
+    {
+        "LogicalId": "MeetCostApiprodStage",
+        "Type": "AWS::ApiGateway::Stage",
+        "Status": "UPDATE_COMPLETE"
+    },
+    {
+        "LogicalId": "SharedLayer18cf0a1ee4",
+        "Type": "AWS::Lambda::LayerVersion",
+        "Status": "CREATE_COMPLETE"
+    }
+]

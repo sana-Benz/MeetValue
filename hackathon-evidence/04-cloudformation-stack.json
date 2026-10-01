@@ -1,0 +1,28 @@
+{
+    "StackName": "meetcost-stack",
+    "Status": "UPDATE_COMPLETE",
+    "Created": "2026-09-22T15:08:02.524000+00:00",
+    "LastUpdated": "2026-10-01T18:56:33.107000+00:00",
+    "Outputs": [
+        {
+            "OutputKey": "FrontendBucketUrl",
+            "OutputValue": "http://meetcost-frontend-022076688911.s3-website-us-east-1.amazonaws.com",
+            "Description": "S3 website URL for the MeetValue frontend"
+        },
+        {
+            "OutputKey": "ApiEndpoint",
+            "OutputValue": "https://zlxv6jurt6.execute-api.us-east-1.amazonaws.com/prod",
+            "Description": "API Gateway endpoint for the MeetValue Lambda functions"
+        },
+        {
+            "OutputKey": "CalculateCostFunctionArn",
+            "OutputValue": "arn:aws:lambda:us-east-1:022076688911:function:meetcost-calculate-cost",
+            "Description": "ARN of the Calculate Cost Lambda function"
+        },
+        {
+            "OutputKey": "GetRecommendationsFunctionArn",
+            "OutputValue": "arn:aws:lambda:us-east-1:022076688911:function:meetcost-get-recommendations",
+            "Description": "ARN of the Get Recommendations Lambda function"
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+[
+    {
+        "Name": "meetcost-recommendations-plan",
+        "Quota": {
+            "limit": 2000,
+            "offset": 0,
+            "period": "DAY"
+        },
+        "Throttle": {
+            "burstLimit": 5,
+            "rateLimit": 2.0
+        }
+    }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "Name": "meetcost-calculate-cost",
+    "Runtime": "python3.12",
+    "Memory": 128,
+    "Timeout": 10,
+    "LastModified": "2026-09-24T10:17:21.000+0000",
+    "ModelId": null
+  },
+  {
+    "Name": "meetcost-get-recommendations",
+    "Runtime": "python3.12",
+    "Memory": 128,
+    "Timeout": 10,
+    "LastModified": "2026-09-24T10:35:50.000+0000",
+    "ModelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  }
+]

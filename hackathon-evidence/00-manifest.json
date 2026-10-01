@@ -1,0 +1,67 @@
+{
+  "captured_at": "2026-10-01T19:04:37Z",
+  "captured_by_agent": "Claude Code",
+  "region": "us-east-1",
+  "commands": [
+    {
+      "file": "01-aws-cli-version.txt",
+      "command": "aws --version",
+      "proves": "CLI used by the agent",
+      "exit_code": 0
+    },
+    {
+      "file": "02-sts-get-caller-identity.json",
+      "command": "bash -c aws sts get-caller-identity --output json | jq '.UserId = \"<redacted>\"'",
+      "proves": "Credentials are valid; AWS STS identifies the caller",
+      "exit_code": 0
+    },
+    {
+      "file": "03-credentials-configured.json",
+      "command": "bash -c aws configure list --profile \"${AWS_PROFILE:-default}\" >/dev/null && jq -n --arg r \"$(aws configure get region)\" '{credentials_configured:true, access_key_id:\"<not recorded>\", region:$r}'",
+      "proves": "A credential source and region are configured (key ID not recorded)",
+      "exit_code": 0
+    },
+    {
+      "file": "04-cloudformation-stack.json",
+      "command": "aws cloudformation describe-stacks --stack-name meetcost-stack --region us-east-1 --query Stacks[0].{StackName:StackName,Status:StackStatus,Created:CreationTime,LastUpdated:LastUpdatedTime,Outputs:Outputs} --output json",
+      "proves": "The stack exists, its status, creation time and public outputs",
+      "exit_code": 0
+    },
+    {
+      "file": "05-cloudformation-deploy-history.json",
+      "command": "aws cloudformation describe-stack-events --stack-name meetcost-stack --region us-east-1 --query StackEvents[?ResourceType==`AWS::CloudFormation::Stack`].{Timestamp:Timestamp,Status:ResourceStatus} --output json",
+      "proves": "Every create/update of the stack, with timestamps",
+      "exit_code": 0
+    },
+    {
+      "file": "06-cloudformation-resources.json",
+      "command": "aws cloudformation list-stack-resources --stack-name meetcost-stack --region us-east-1 --query StackResourceSummaries[].{LogicalId:LogicalResourceId,Type:ResourceType,Status:ResourceStatus} --output json",
+      "proves": "Resources the stack provisioned",
+      "exit_code": 0
+    },
+    {
+      "file": "07-lambda-functions.json",
+      "command": "bash -c for f in meetcost-calculate-cost meetcost-get-recommendations; do aws lambda get-function-configuration --function-name $f --region us-east-1 --query '{Name:FunctionName,Runtime:Runtime,Memory:MemorySize,Timeout:Timeout,LastModified:LastModified,ModelId:Environment.Variables.BEDROCK_MODEL_ID}' --output json; done | jq -s .",
+      "proves": "The two deployed Lambda functions",
+      "exit_code": 0
+    },
+    {
+      "file": "08-live-bedrock-recommendation.json",
+      "command": "curl -s -X POST https://zlxv6jurt6.execute-api.us-east-1.amazonaws.com/prod/get-recommendations -H Content-Type: application/json -H x-api-key: <api-key> -d {\"subject\":\"Q4 sales pipeline review\",\"duration_minutes\":60,\"attendees\":[{\"name\":\"Alice\",\"role\":\"VP Sales\",\"seniority\":\"executive\",\"hourly_rate\":400},{\"name\":\"Bob\",\"role\":\"Backend Developer\",\"seniority\":\"junior\",\"hourly_rate\":50},{\"name\":\"Carol\",\"role\":\"Account Executive\",\"seniority\":\"senior\",\"hourly_rate\":200}],\"total_cost\":650}",
+      "proves": "A real end-to-end call: API Gateway -> Lambda -> Bedrock (Claude Haiku 4.5)",
+      "exit_code": 0
+    },
+    {
+      "file": "09-api-usage-plan.json",
+      "command": "aws apigateway get-usage-plans --region us-east-1 --query items[?name==`meetcost-recommendations-plan`].{Name:name,Quota:quota,Throttle:throttle} --output json",
+      "proves": "Daily quota + throttle capping Bedrock spend (no key values)",
+      "exit_code": 0
+    },
+    {
+      "file": "10-live-app-check.txt",
+      "command": "curl -s -o /dev/null -w GET http://meetcost-frontend-022076688911.s3-website-us-east-1.amazonaws.com/ -> HTTP %{http_code} in %{time_total}s\\n http://meetcost-frontend-022076688911.s3-website-us-east-1.amazonaws.com/",
+      "proves": "The public URL answers",
+      "exit_code": 0
+    }
+  ]
+}
