@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+# Resources keep the meetcost-* naming for deployment continuity; the product is now branded MeetValue.
+Description: MeetValue MVP - Serverless cost calculator with AI recommendations
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: python3.12
+    Environment:
+      Variables:
+        JUNIOR_RATE: "50"
+        MID_LEVEL_RATE: "100"
+        SENIOR_RATE: "200"
+        EXECUTIVE_RATE: "400"
+
+Resources:
+  # Shared code (constants.py, bedrock_client.py) used by both Lambdas.
+  # ContentUri points at backend/shared/ (flat: constants.py, bedrock_client.py
+  # directly inside it, no python/ subfolder on disk). Metadata.BuildMethod
+  # below tells `sam build` to wrap that content into a python/ subfolder
+  # itself — Lambda mounts layer content at /opt, and /opt/python is
+  # auto-added to sys.path for the Python runtime, so both functions can
+  # `from constants import ...` without duplicating the file into each
+  # function's package. (Do NOT pre-create a python/ subfolder in
+  # backend/shared/ yourself — combined with BuildMethod that produces a
+  # broken double-nested python/python/constants.py; verified with `sam build`.)
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: meetcost-shared
+      Description: Shared constants and Bedrock client used by both Lambdas
+      ContentUri: ../backend/shared/
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+
+  # Task 6.1: API Gateway with CORS
+  MeetCostApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,x-api-key'"
+      # Cost guardrail: every /get-recommendations call is a paid Bedrock call,
+      # and the API is public. The usage plan caps that route at a hard daily
+      # quota (worst case ~2000 x ~$0.003 = ~$7/day, even under abuse). The API
+      # key it requires is NOT a secret — the browser sends it — it only exists
+      # because API Gateway usage plans count requests per key.
+      Auth:
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: meetcost-recommendations-plan
+          Quota:
+            Limit: 2000
+            Period: DAY
+          Throttle:
+            RateLimit: 2
+            BurstLimit: 5
+      # Stage-wide rate cap for every route (including the free /calculate-cost)
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
+      # Gateway-generated errors (429 quota/throttle, 403 missing key) carry no
+      # CORS headers by default, so the browser would report them as CORS
+      # failures. Adding them lets the frontend see the real status.
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,x-api-key'"
+
+  # Task 6.2: Calculate Cost Lambda Function
+  CalculateCostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: meetcost-calculate-cost
+      CodeUri: ../backend/functions/calculate_cost/
+      Handler: handler.lambda_handler
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        CalculateCostApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MeetCostApi
+            Path: /calculate-cost
+            Method: POST
+
+  # Task 6.3: Get Recommendations Lambda Function
+  GetRecommendationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: meetcost-get-recommendations
+      CodeUri: ../backend/functions/get_recommendations/
+      Handler: handler.lambda_handler
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          # Claude Haiku 4.5 is only invokable via a cross-region inference
+          # profile on Bedrock, not the bare foundation-model ID — verified
+          # directly: the bare ID fails with "on-demand throughput isn't
+          # supported... use an inference profile".
+          BEDROCK_MODEL_ID: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+          BEDROCK_REGION: "us-east-1"
+          MAX_TOKENS: "500"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource:
+                # The inference profile resource itself
+                - !Sub "arn:aws:bedrock:us-east-1:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+                # The underlying foundation model in whichever US region the
+                # profile routes the request to (region wildcarded since
+                # cross-region inference can invoke it in us-east-1,
+                # us-east-2, or us-west-2)
+                - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+            # Anthropic models on Bedrock are distributed via AWS Marketplace.
+            # On first use, Bedrock auto-subscribes the account in the
+            # background, which requires the calling role to have these
+            # actions — without them, InvokeModel fails with:
+            # "Model access is denied due to IAM user or service role is not
+            # authorized to perform the required AWS Marketplace actions".
+            # This exact structure (one statement, ForAllValues:StringEquals
+            # on ProductId + aws:CalledViaLast=bedrock.amazonaws.com) matches
+            # AWS's own published example in "Simplified model access in
+            # Amazon Bedrock" (AWS Security Blog), which independently lists
+            # prod-xdkflymybwmvi as Claude Haiku 4.5's product ID — same ID
+            # already confirmed from the model's own Bedrock doc page.
+            - Effect: Allow
+              Action:
+                - aws-marketplace:ViewSubscriptions
+                - aws-marketplace:Subscribe
+              Resource: "*"
+              Condition:
+                ForAllValues:StringEquals:
+                  aws-marketplace:ProductId:
+                    - "prod-xdkflymybwmvi"
+                StringEquals:
+                  aws:CalledViaLast: "bedrock.amazonaws.com"
+      Events:
+        GetRecommendationsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MeetCostApi
+            Path: /get-recommendations
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
+
+  # Task 6.4: Frontend S3 Bucket with Website Configuration
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "meetcost-frontend-${AWS::AccountId}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  # Task 6.4: Bucket Policy for Public Read Access
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint for the MeetValue Lambda functions
+    Value: !Sub "https://${MeetCostApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  FrontendBucketUrl:
+    Description: S3 website URL for the MeetValue frontend
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
+  CalculateCostFunctionArn:
+    Description: ARN of the Calculate Cost Lambda function
+    Value: !GetAtt CalculateCostFunction.Arn
+
+  GetRecommendationsFunctionArn:
+    Description: ARN of the Get Recommendations Lambda function
+    Value: !GetAtt GetRecommendationsFunction.Arn
