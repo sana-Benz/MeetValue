@@ -6,7 +6,7 @@ MeetValue shows the real dollar cost of a meeting while you plan it, based on wh
 
 ## 🎬 Demo
 
-![MeetValue Demo](./assets/meetvalue-demo.gif)
+![MeetValue Demo](./assets/meetvalue daily meeting demo.gif)    
 
 Built for the **AWS Zero to Shipped** hackathon · Category **Workplace Efficiency** · Lane **Startups** · Built with **[Kiro](https://kiro.dev)** (spec-driven development and AWS deployment)
 
